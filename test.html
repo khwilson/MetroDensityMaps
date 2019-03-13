@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title>Style circles with a data-driven property</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.53.1/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.53.1/mapbox-gl.css' rel='stylesheet' />
+    <style>
+        body { margin:0; padding:0; }
+        #map { position:absolute; top:0; bottom:0; width:100%; }
+   </style>
+
+  <style>
+    #menu {
+      background: #fff;
+      position: absolute;
+      z-index: 1;
+      top: 10px;
+      right: 10px;
+      border-radius: 3px;
+      width: 120px;
+      border: 1px solid rgba(0,0,0,0.4);
+      font-family: 'Open Sans', sans-serif;
+    }
+     
+    #menu a {
+      font-size: 13px;
+      color: #404040;
+      display: block;
+      margin: 0;
+      padding: 0;
+      padding: 10px;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(0,0,0,0.25);
+      text-align: center;
+    }
+     
+    #menu a:last-child {
+      border: none;
+    }
+     
+    #menu a:hover {
+      background-color: #f8f8f8;
+      color: #404040;
+    }
+     
+    #menu a.active {
+      background-color: #3887be;
+      color: #ffffff;
+    }
+     
+    #menu a.active:hover {
+      background: #3074a4;
+    }
+  </style>
+</head>
+<body>
+
+<nav id='menu'></nav>
+<div id='map'></div>
+<script>
+mapboxgl.accessToken = 'pk.eyJ1Ijoia2h3aWxzb24iLCJhIjoiY2l6c3Y4M201MDM3MjJwb2FkM29wNWo2eSJ9.T_SoKqhpzybmz9J1GYuVSA';
+var map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/light-v9',
+    zoom: 11,
+    center: [2.3522, 48.8566]
+});
+
+map.on('load', function () {
+
+    map.addLayer({
+        'id': 'population_density',
+        'type': 'fill',
+        'source': {
+            type: 'vector',
+            url: 'mapbox://khwilson.cjt6g37c402dbtfoxw9feetki-66qpn'
+        },
+        'source-layer': 'Paris_Density_Updated',
+        'paint': {
+          'fill-color': {
+            'property': 'population_density',
+            'stops': [
+              [1e-3, '#f1f075'],
+              [1e-1, '#e55e5e']
+            ]
+          },
+          'fill-opacity': 0.8,
+          'fill-outline-color': '#000'
+        }
+    });
+
+    map.addLayer({
+        'id': 'population',
+        'type': 'fill',
+        'source': {
+            type: 'vector',
+            url: 'mapbox://khwilson.cjt6g37c402dbtfoxw9feetki-66qpn'
+        },
+        'source-layer': 'Paris_Density_Updated',
+        'paint': {
+          'fill-color': {
+            'property': 'population',
+            'stops': [
+              [1000, '#f1f075'],
+              [20000, '#e55e5e']
+            ]
+          },
+          'fill-opacity': 0.8,
+          'fill-outline-color': '#000'
+        }
+    });
+
+    map.addLayer({
+      'id': 'metro_stops',
+      'type': 'circle',
+      'source': {
+        type: 'vector',
+        url: 'mapbox://khwilson.cjt6g8we5011zf3oe4m0aw29u-5habs'
+      },
+      'source-layer': 'Metro_Stops_Updated',
+      'paint': {
+        'circle-radius': 3,
+        'circle-color': '#000'
+      }
+    });
+
+    map.addLayer({
+      'id': 'metro_stops_names',
+      'type': 'symbol',
+      'source': {
+        type: 'vector',
+        url: 'mapbox://khwilson.cjt6g8we5011zf3oe4m0aw29u-5habs'
+      },
+      'source-layer': 'Metro_Stops_Updated',
+      'layout': {
+        'icon-image': 'london-underground-11',
+        'text-field': ['format',
+          ['get', 'stop_name'],
+          {'font-scale': 0.8}
+        ],
+        'text-anchor': 'left',
+        'text-offset': [0, 0.8]
+      }
+    });
+
+    // Create a popup, but don't add it to the map yet.
+    var popup = new mapboxgl.Popup({
+      closeButton: false,
+      closeOnClick: false
+    });
+     
+    map.on('mousemove', 'population', function(e) {
+      // Change the cursor style as a UI indicator.
+      map.getCanvas().style.cursor = 'pointer';
+     
+      // Populate the popup and set its coordinates
+      // based on the feature found.
+      popup.setLngLat(e.lngLat)
+           .setHTML('<p>Population: ' + parseInt(e.features[0].properties.population) +
+                    '<p>Density: ' + parseInt(e.features[0].properties.population_density * 1000000) + ' ppl/km^2')
+           .addTo(map);
+    });
+     
+    map.on('mouseleave', 'population', function() {
+      map.getCanvas().style.cursor = '';
+      popup.remove();
+    });
+});
+
+var link = document.createElement('a')
+link.href = '#'
+link.className = 'active'
+link.textContent = 'population'
+
+link.onclick = function (e) {
+  var clickedVal = this.textContent
+  e.preventDefault()
+  e.stopPropagation()
+
+  if (clickedVal == 'population') {
+    this.textContent = 'density'
+    map.setLayoutProperty('population', 'visibility', 'none')
+    map.setLayoutProperty('population_density', 'visibility', 'visible')
+  } else {
+    this.textContent = 'population'
+    map.setLayoutProperty('population', 'visibility', 'visible')
+    map.setLayoutProperty('population_density', 'visibility', 'none')
+  }
+}
+
+var layers = document.getElementById('menu')
+layers.appendChild(link)
+
+</script>
+
+<a 
+
+</body>
+</html>
